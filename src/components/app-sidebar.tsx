@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CompassIcon,
   CreditCardIcon,
   FolderOpenIcon,
   HistoryIcon,
@@ -99,7 +100,11 @@ const AppSidebar = () => {
                       asChild
                       className="gap-x-4 h-10 px-4"
                     >
-                      <Link href={item.url} prefetch>
+                      <Link
+                        href={item.url}
+                        prefetch
+                        data-tour={`sidebar-${item.title.toLowerCase()}`}
+                      >
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -138,6 +143,18 @@ const AppSidebar = () => {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Take a tour"
+              className="gap-x-4 h-10 px-4"
+              onClick={() =>
+                window.dispatchEvent(new Event("nodebase:start-tour"))
+              }
+            >
+              <CompassIcon className="h-4 w-4" />
+              <span>Take a tour</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip={isDark ? "Light mode" : "Dark mode"}

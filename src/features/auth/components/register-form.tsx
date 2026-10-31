@@ -59,6 +59,7 @@ export function RegisterForm() {
     await authClient.signIn.social(
       {
         provider: "github",
+        callbackURL: "/workflows",
       },
       {
         onSuccess: () => {
@@ -74,6 +75,7 @@ export function RegisterForm() {
     await authClient.signIn.social(
       {
         provider: "google",
+        callbackURL: "/workflows",
       },
       {
         onSuccess: () => {

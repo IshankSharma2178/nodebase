@@ -1,0 +1,60 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#eef2ff','primaryBorderColor':'#6366f1','primaryTextColor':'#1e1b4b','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+flowchart LR
+  subgraph CLIENT["Client"]
+    B["Browser<br/>React 19 + React Flow"]
+  end
+
+  subgraph APP["Next.js 15 Application"]
+    UI["App Router pages<br/>(auth, dashboard, editor)"]
+    TRPC["tRPC v11 API<br/>/api/trpc"]
+    HOOKS["Route handlers<br/>webhooks, health, Inngest"]
+    AUTH["Better Auth"]
+    BILL["Polar billing"]
+  end
+
+  subgraph DATA["Data & Messaging"]
+    PG[("PostgreSQL<br/>Prisma 6")]
+    UREDIS[("Upstash Redis<br/>rate limit + idempotency")]
+    BULL[("Redis / BullMQ<br/>email + cron queues")]
+    ING["Inngest<br/>durable jobs + realtime"]
+  end
+
+  subgraph WORKERS["Background Workers"]
+    EW["Email worker"]
+    CW["Cron worker"]
+    EXEC["executeWorkflow<br/>(served by /api/inngest)"]
+  end
+
+  subgraph EXT["External Services"]
+    OAUTH["GitHub / Google OAuth"]
+    AI["OpenAI / Anthropic / Gemini"]
+    MSG["Telegram / Discord / Slack"]
+    GS["Google Sheets"]
+    HOOKS_SRC["Google Form / Stripe<br/>Telegram webhooks"]
+    SMTP["SMTP"]
+    SENTRY["Sentry"]
+  end
+
+  B --> UI
+  UI --> TRPC
+  B <-->|"subscription"| ING
+  TRPC --> PG
+  TRPC --> UREDIS
+  TRPC --> AUTH
+  TRPC --> BILL
+  AUTH --> PG
+  AUTH --> OAUTH
+  AUTH -->|"OTP email job"| BULL
+  BULL --> EW
+  EW --> SMTP
+  BULL --> CW
+  CW -->|"workflows/execute.workflow"| ING
+  HOOKS --> ING
+  HOOKS_SRC --> HOOKS
+  ING --> EXEC
+  EXEC --> PG
+  EXEC --> AI
+  EXEC --> MSG
+  EXEC --> GS
+  EXEC -->|"realtime status"| ING
+  APP -.-> SENTRY

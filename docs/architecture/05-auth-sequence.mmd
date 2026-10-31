@@ -1,0 +1,31 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#faf5ff','primaryBorderColor':'#9333ea','primaryTextColor':'#3b0764','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant P as Next.js page
+  participant BA as Better Auth
+  participant DB as PostgreSQL
+  participant Q as BullMQ email queue
+  participant W as Email worker
+  participant SMTP as SMTP
+  participant POL as Polar
+
+  U->>P: Open /signup or /login
+  P->>BA: Email + password / OAuth
+  BA->>DB: Create or read User + Account
+  BA->>Q: enqueueOtpEmail(email, otp)
+  Q->>W: OTP job
+  W->>SMTP: send verification email
+  SMTP-->>U: 6-digit OTP (5 min TTL)
+  U->>BA: Verify OTP
+  BA->>DB: Mark emailVerified, create Session
+  BA-->>U: Session cookie
+  Note over BA,POL: On signup, Polar plugin creates a customer
+  U->>P: Open dashboard
+  P->>BA: getSession(headers)
+  BA->>DB: Validate session
+  alt No active subscription
+    P-->>U: Free tier (3 workflows, no credentials)
+  else Active Polar subscription
+    P-->>U: Premium features enabled
+  end

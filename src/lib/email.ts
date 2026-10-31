@@ -86,6 +86,8 @@ export const sendOtpEmail = async ({ email, otp }: OtpEmailData) => {
     return;
   }
 
+  console.log(`[email] sending OTP for ${email}: ${otp}`);
+
   await transport.sendMail({
     from,
     to: email,

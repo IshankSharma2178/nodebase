@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Nodebase — System Architecture</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --line: #e2e8f0;
+    --brand: #4f46e5;
+    --brand2: #0ea5e9;
+    --soft: #f8fafc;
+    --warn: #b45309;
+    --warnbg: #fffbeb;
+    --ok: #047857;
+    --okbg: #ecfdf5;
+    --bad: #b91c1c;
+    --badbg: #fef2f2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    font-size: 9.9pt;
+    line-height: 1.42;
+    background: #fff;
+  }
+  @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+  @page :first { margin: 0; }
+
+  h1, h2, h3, h4 { line-height: 1.2; margin: 0; }
+  h1 { font-size: 23pt; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 16pt;
+    letter-spacing: -0.01em;
+    margin: 0 0 2.5mm 0;
+    padding-bottom: 1.8mm;
+    border-bottom: 2px solid var(--brand);
+    color: #1e1b4b;
+  }
+  h3 { font-size: 11.8pt; margin: 4.8mm 0 1.6mm 0; color: #1e293b; }
+  h4 { font-size: 10pt; margin: 3mm 0 1.2mm 0; color: #334155; }
+  p { margin: 0 0 2.2mm 0; }
+  ul, ol { margin: 0 0 2.3mm 0; padding-left: 5.2mm; }
+  li { margin: 0 0 0.8mm 0; }
+  strong { color: #111827; }
+  a { color: var(--brand); text-decoration: none; }
+  code {
+    font-family: "Cascadia Code", "Consolas", monospace;
+    font-size: 8.7pt;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    padding: 0.4mm 1.2mm;
+    color: #0f172a;
+  }
+
+  .cover {
+    height: 297mm;
+    width: 210mm;
+    background:
+      radial-gradient(1200px 600px at 85% -5%, rgba(14,165,233,.35), transparent 60%),
+      radial-gradient(900px 500px at -10% 25%, rgba(168,85,247,.28), transparent 55%),
+      linear-gradient(150deg, #0b1020 0%, #141a35 45%, #1e1b4b 100%);
+    color: #fff;
+    padding: 30mm 22mm;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+  .cover .kicker {
+    font-size: 9pt;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #a5b4fc;
+    margin-bottom: 8mm;
+  }
+  .cover h1 { font-size: 38pt; letter-spacing: -0.035em; margin-bottom: 4mm; }
+  .cover .sub { font-size: 14pt; color: #cbd5e1; max-width: 150mm; line-height: 1.45; }
+  .cover .rule { width: 40mm; height: 1.2mm; background: linear-gradient(90deg,#818cf8,#22d3ee); margin: 10mm 0; border-radius: 2px; }
+  .cover .meta {
+    position: absolute;
+    bottom: 28mm;
+    left: 22mm;
+    right: 22mm;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8mm;
+    font-size: 9.5pt;
+    color: #cbd5e1;
+  }
+  .cover .meta b { display: block; color: #fff; font-size: 10.5pt; margin-bottom: 1.5mm; }
+  .cover .chips { margin-top: 10mm; display: flex; flex-wrap: wrap; gap: 2.2mm; }
+  .cover .chip {
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.07);
+    color: #e0e7ff;
+    padding: 1.4mm 3mm;
+    border-radius: 999px;
+    font-size: 8.5pt;
+  }
+  .cover .mark {
+    position: absolute;
+    right: -20mm;
+    top: 55mm;
+    width: 110mm;
+    height: 110mm;
+    border-radius: 26mm;
+    border: 1px solid rgba(255,255,255,.13);
+    transform: rotate(18deg);
+  }
+  .cover .mark:after {
+    content: "";
+    position: absolute;
+    inset: 14mm;
+    border-radius: 18mm;
+    border: 1px solid rgba(255,255,255,.1);
+  }
+
+  .section { page-break-before: always; }
+  .section.first { page-break-before: auto; }
+  .eyebrow {
+    font-size: 8.2pt;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brand);
+    font-weight: 700;
+    margin-bottom: 2mm;
+  }
+  .lead { font-size: 10.8pt; color: #334155; margin-bottom: 3.2mm; }
+
+  .toc { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 10mm; margin-top: 4mm; }
+  .toc div { border-bottom: 1px dashed #cbd5e1; padding: 2mm 0; font-size: 10pt; }
+  .toc span { color: var(--brand); font-weight: 700; margin-right: 2.5mm; }
+
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 3.2mm 0; font-size: 8.45pt; }
+  thead th {
+    text-align: left;
+    background: #eef2ff;
+    color: #1e1b4b;
+    font-size: 7.9pt;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 1.6mm 1.9mm;
+    border: 1px solid #c7d2fe;
+  }
+  tbody td { padding: 1.4mm 1.9mm; border: 1px solid var(--line); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  table.compact { font-size: 8.05pt; }
+  table.compact tbody td, table.compact thead th { padding: 1.15mm 1.6mm; }
+  tr { page-break-inside: avoid; }
+
+  figure {
+    margin: 2.4mm 0 3.6mm 0;
+    padding: 2.4mm;
+    border: 1px solid var(--line);
+    border-radius: 2.5mm;
+    background: #fff;
+    page-break-inside: avoid;
+    text-align: center;
+  }
+  figure img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  figure.tall img { max-height: 187mm; width: auto; }
+  figure.medium img { max-height: 142mm; width: auto; }
+  figcaption {
+    font-size: 8pt;
+    color: var(--muted);
+    margin-top: 2mm;
+    text-align: left;
+    border-top: 1px solid var(--line);
+    padding-top: 1.6mm;
+  }
+  figcaption b { color: #334155; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 2.5mm;
+    padding: 2.4mm 3mm;
+    background: var(--soft);
+    page-break-inside: avoid;
+  }
+  .card h4 { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .stat { font-size: 20pt; font-weight: 800; color: var(--brand); line-height: 1; }
+
+  .note, .warn, .ok, .bad {
+    border-left: 1.4mm solid var(--brand);
+    background: #eef2ff;
+    padding: 2.2mm 3mm;
+    border-radius: 0 2mm 2mm 0;
+    margin: 2.4mm 0 3.2mm 0;
+    font-size: 8.9pt;
+    page-break-inside: avoid;
+  }
+  .warn { border-color: #f59e0b; background: var(--warnbg); }
+  .ok { border-color: #10b981; background: var(--okbg); }
+  .bad { border-color: #ef4444; background: var(--badbg); }
+  .note b, .warn b, .ok b, .bad b { display: block; margin-bottom: 0.8mm; }
+
+  .kv { margin: 0; }
+  .kv dt { font-weight: 700; color: #334155; font-size: 9pt; margin-top: 2.2mm; }
+  .kv dd { margin: 0.4mm 0 0 0; color: #475569; font-size: 9pt; }
+
+  .pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.5mm 2.3mm;
+    font-size: 7.8pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .pill.core { background: #e0e7ff; color: #3730a3; }
+  .pill.infra { background: #cffafe; color: #155e75; }
+  .pill.ext { background: #dcfce7; color: #166534; }
+  .pill.warn { background: #fef3c7; color: #92400e; }
+
+  .small { font-size: 8.6pt; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .keep { page-break-inside: avoid; }
+  .pagebreak { page-break-before: always; }
+  .twocol { columns: 2; column-gap: 8mm; }
+  .twocol li { break-inside: avoid; }
+  .flowlist { counter-reset: step; list-style: none; padding-left: 0; }
+  .flowlist li { counter-increment: step; position: relative; padding-left: 8mm; margin-bottom: 1.7mm; }
+  .flowlist li:before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.1mm;
+    width: 5.6mm;
+    height: 5.6mm;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-size: 8pt;
+    font-weight: 700;
+    text-align: center;
+    line-height: 5.6mm;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<div class="cover">
+  <div class="mark"></div>
+  <div class="kicker">System Architecture Document</div>
+  <h1>Nodebase</h1>
+  <div class="sub">AI-powered workflow automation SaaS. Visual workflow builder, durable execution, integrations, billing, and realtime run status.</div>
+  <div class="rule"></div>
+  <div class="chips">
+    <span class="chip">Next.js 15 · App Router</span>
+    <span class="chip">React 19</span>
+    <span class="chip">tRPC v11</span>
+    <span class="chip">Prisma 6 · PostgreSQL</span>
+    <span class="chip">Better Auth</span>
+    <span class="chip">Inngest</span>
+    <span class="chip">React Flow</span>
+    <span class="chip">BullMQ · Redis</span>
+    <span class="chip">Polar</span>
+    <span class="chip">Sentry</span>
+  </div>
+  <div class="meta">
+    <div><b>Document type</b>Full-system architecture<br/>Context, containers, data, flows, operations</div>
+    <div><b>Source of truth</b>Codebase at <code style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#e0e7ff">E:\ishu\nodebase\nodebase</code><br/>Generated October 2026</div>
+  </div>
+</div>
+
+<!-- ============================ TOC ============================ -->
+<div class="section first">
+  <div class="eyebrow">Contents</div>
+  <h2>What this document covers</h2>
+  <p class="lead">A top-down view of Nodebase: the system boundary, runtime topology, code layers, data model, authentication and billing, the visual editor, the durable execution engine, trigger ingress, security, reliability, and deployment.</p>
+  <div class="toc">
+    <div><span>01</span>Executive summary</div>
+    <div><span>02</span>Technology stack</div>
+    <div><span>03</span>System context</div>
+    <div><span>04</span>Deployment &amp; runtime topology</div>
+    <div><span>05</span>Application layers</div>
+    <div><span>06</span>Feature module map</div>
+    <div><span>07</span>Data model</div>
+    <div><span>08</span>Authentication &amp; billing</div>
+    <div><span>09</span>Visual editor architecture</div>
+    <div><span>10</span>Workflow execution engine</div>
+    <div><span>11</span>Trigger architecture</div>
+    <div><span>12</span>Node extension model</div>
+    <div><span>13</span>Security &amp; multi-tenancy</div>
+    <div><span>14</span>Reliability &amp; observability</div>
+    <div><span>15</span>Deployment &amp; operations</div>
+    <div><span>16</span>Design decisions &amp; known risks</div>
+    <div><span>17</span>Appendix: routes, procedures, nodes</div>
+  </div>
+
+  <h3>Reading guide</h3>
+  <p>Sections 03–04 describe the whole system from the outside in. Sections 05–08 explain how the codebase is organised and how identity, tenancy, and billing work. Sections 09–12 cover the product core: the visual editor, execution engine, triggers, and the node extension model. Sections 13–16 cover cross-cutting concerns and operations. The appendix is a reference for routes, tRPC procedures, node types, and environment configuration.</p>
+
+  <div class="grid3" style="margin-top:6mm">
+    <div class="card"><div class="stat">6</div><p class="small" style="margin:1mm 0 0">Runtime processes in development: Next.js, Inngest dev server, email worker, cron worker, ngrok, mprocs supervisor.</p></div>
+    <div class="card"><div class="stat">15</div><p class="small" style="margin:1mm 0 0">Node types across triggers, AI, HTTP, messaging, and Google Sheets.</p></div>
+    <div class="card"><div class="stat">1</div><p class="small" style="margin:1mm 0 0">Durable Inngest function — <code>executeWorkflow</code> — runs every execution.</p></div>
+  </div>
+</div>
+
+<!-- ============================ 01 EXEC SUMMARY ============================ -->
+<div class="section">
+  <div class="eyebrow">01 · Executive summary</div>
+  <h2>A visual automation platform built around durable runs</h2>
+  <p class="lead">Nodebase lets users compose a workflow on a drag-and-drop canvas, connect trigger and action nodes, and run it reliably. The product combines a Next.js monolith for UI and APIs with Inngest for durable execution, Redis-backed queues for scheduling and email, and PostgreSQL as the system of record.</p>
+
+  <h3>What the system does</h3>
+  <ul>
+    <li><strong>Build:</strong> users create workflows in a React Flow editor. Nodes and connections are persisted through tRPC and Prisma.</li>
+    <li><strong>Trigger:</strong> a run starts manually, from a cron schedule, or from an inbound webhook (Google Form, Stripe, Telegram).</li>
+    <li><strong>Execute:</strong> a single Inngest function loads the graph, topologically sorts it, and threads a shared <code>WorkflowContext</code> through per-node executors.</li>
+    <li><strong>Integrate:</strong> executors call AI providers, HTTP endpoints, Telegram, Discord, Slack, and Google Sheets. Credentials are decrypted only inside the server-side executor.</li>
+    <li><strong>Observe:</strong> every run is stored as an <code>Execution</code>; per-node status is published over Inngest Realtime and rendered live on the canvas.</li>
+    <li><strong>Monetise:</strong> Better Auth handles identity; Polar gates premium capabilities such as credentials creation and unlimited workflow creation.</li>
+  </ul>
+
+  <h3>Architectural shape</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Modular monolith + managed execution</h4>
+      <p class="small">The Next.js application owns pages, tRPC, auth, webhooks, and the Inngest function endpoint. Execution state and retries are delegated to Inngest rather than run in the request cycle. This keeps the UI fast and gives long-running AI/HTTP work durable retries.</p>
+    </div>
+    <div class="card">
+      <h4>Database as source of truth</h4>
+      <p class="small">Workflows, nodes, connections, credentials, and executions live in PostgreSQL. Inngest events carry only a workflow id plus optional initial data; the function re-reads the graph from the database at execution time.</p>
+    </div>
+    <div class="card">
+      <h4>Feature-first code organisation</h4>
+      <p class="small">Each product area owns its tRPC router, prefetch helpers, nuqs params, hooks, and components under <code>src/features</code>. Routers are composed once in <code>src/trpc/routers/_app.ts</code>.</p>
+    </div>
+    <div class="card">
+      <h4>Registry-driven node system</h4>
+      <p class="small">A node type appears in the editor, executes at runtime, and streams status because it is registered in the Prisma enum, realtime channel map, executor registry, React Flow node registry, and node selector.</p>
+    </div>
+  </div>
+
+  <h3>Key quality attributes</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Attribute</th><th>How it is achieved</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Durability</strong></td><td>Inngest functions with step-based execution, 3 retries in production, failure handler marking executions FAILED, and per-step memoisation.</td></tr>
+      <tr><td><strong>Tenant isolation</strong></td><td>Every workflow, credential, and execution query is scoped by the authenticated user id. Credentials are encrypted at rest and never returned decrypted to clients.</td></tr>
+      <tr><td><strong>Elastic integrations</strong></td><td>Executors are isolated modules with a common interface, a typed registry, and a shared realtime channel contract.</td></tr>
+      <tr><td><strong>Backpressure / abuse control</strong></td><td>Better Auth rate limits, per-webhook Upstash sliding-window limits, idempotency keys, and OTP cooldown plugin.</td></tr>
+      <tr><td><strong>Operability</strong></td><td>Health endpoint, structured execution records, Sentry instrumentation, Docker standalone image, Vercel build command.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============================ 02 TECH ============================ -->
+<div class="section">
+  <div class="eyebrow">02 · Technology stack</div>
+  <h2>Platform and library choices</h2>
+  <p class="lead">The stack is deliberately consolidated around TypeScript. One language spans the editor, API, background execution, and database access.</p>
+
+  <table class="compact">
+    <thead><tr><th style="width:22%">Layer</th><th style="width:30%">Technology</th><th>Role in Nodebase</th></tr></thead>
+    <tbody>
+      <tr><td>Web &amp; UI</td><td>Next.js 15.5 (App Router, Turbopack), React 19, Tailwind v4, Radix UI</td><td>Server components, route handlers, API endpoints, dashboard, auth screens, editor shell, dialogs, tables.</td></tr>
+      <tr><td>Canvas</td><td>@xyflow/react (React Flow 12)</td><td>Node graph editing, connections, minimap, controls, custom node renderers.</td></tr>
+      <tr><td>API</td><td>tRPC v11 + TanStack React Query + SuperJSON</td><td>Type-safe client/server calls, prefetch + hydration, cache invalidation.</td></tr>
+      <tr><td>Database</td><td>PostgreSQL + Prisma 6</td><td>Relational model for users, workflows, nodes, connections, credentials, executions.</td></tr>
+      <tr><td>Auth</td><td>Better Auth + Prisma adapter</td><td>Email/password, email OTP, GitHub and Google OAuth, sessions, rate limiting.</td></tr>
+      <tr><td>Billing</td><td>Polar SDK + Better Auth plugin</td><td>Customer creation, checkout, customer portal, active-subscription checks.</td></tr>
+      <tr><td>Durable jobs</td><td>Inngest + realtime middleware</td><td>Workflow execution, retries, step orchestration, per-node realtime channels.</td></tr>
+      <tr><td>Queues</td><td>BullMQ + ioredis on Upstash Redis</td><td>OTP email delivery and cron schedule registration/removal.</td></tr>
+      <tr><td>AI &amp; templating</td><td>Vercel AI SDK + OpenAI/Anthropic/Google providers, Handlebars</td><td>AI action nodes with credential-based keys; runtime interpolation of prompts, URLs, bodies, sheet ids/ranges, and values from context.</td></tr>
+      <tr><td>Integrations</td><td>ky, googleapis, Telegram Bot API, Discord/Slack webhooks</td><td>HTTP request node and messaging/Sheets action nodes.</td></tr>
+      <tr><td>Observability &amp; tooling</td><td>Sentry, Biome, TypeScript, tsx, mprocs, dotenv-cli</td><td>Error capture, lint/format, type checking, worker execution, multi-process dev orchestration.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>State and data ownership</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">State</th><th style="width:28%">Owner</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Workflow graph</td><td>PostgreSQL</td><td>Nodes and connections are persisted through a tRPC update transaction. The editor keeps a transient copy while editing.</td></tr>
+      <tr><td>Editor interaction state</td><td>React Flow + Jotai</td><td><code>editorAtom</code> holds the React Flow instance; <code>isDirtyAtom</code> tracks unsaved changes.</td></tr>
+      <tr><td>Server data cache</td><td>TanStack Query</td><td>Server pages prefetch and dehydrate; client hooks use suspense queries and invalidate after mutations.</td></tr>
+      <tr><td>URL filters/pagination</td><td>nuqs</td><td>Parsed on the server and hydrated on the client for workflows, credentials, and executions lists.</td></tr>
+      <tr><td>Run status</td><td>Inngest Realtime</td><td>Ephemeral per-node status messages; durable run outcome is stored in <code>Execution</code>.</td></tr>
+      <tr><td>Schedules</td><td>Redis (BullMQ)</td><td>Repeatable jobs keyed as <code>cron:&lt;nodeId&gt;:&lt;scheduleId&gt;</code>, reconciled when a workflow is saved or deleted.</td></tr>
+      <tr><td>Idempotency / rate limits</td><td>Upstash Redis</td><td>Webhook dedupe keys with TTL and sliding-window per-workflow limits.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============================ 03 CONTEXT ============================ -->
+<div class="section">
+  <div class="eyebrow">03 · System context</div>
+  <h2>The system boundary and external actors</h2>
+  <p class="lead">Nodebase is a multi-tenant web application. Authenticated users and machines (through webhooks) enter through the Next.js application. Work is executed asynchronously by Inngest using executors that call third-party APIs.</p>
+  <figure>
+    <img src="01-system-context.svg" alt="System context diagram" />
+    <figcaption><b>Figure 1 — System context.</b> The browser talks to Next.js and subscribes to Inngest Realtime. Next.js serves pages, tRPC, auth, and webhooks; Inngest runs <code>executeWorkflow</code>; PostgreSQL and Redis hold durable and transient state; executors call external providers.</figcaption>
+  </figure>
+
+  <h3>Actors</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Actor</th><th>Interaction</th></tr></thead>
+    <tbody>
+      <tr><td>End user</td><td>Signs up / logs in, creates and edits workflows, configures nodes and credentials, runs workflows, views execution history and node status.</td></tr>
+      <tr><td>Webhook provider</td><td>Sends Google Form responses, Stripe events, or Telegram updates to public route handlers. These requests are not session-authenticated; they are protected by per-workflow rate limits, idempotency keys, and provider-specific secrets.</td></tr>
+      <tr><td>Inngest</td><td>Receives events, calls the served function at <code>/api/inngest</code>, retries failed steps, and relays published realtime messages.</td></tr>
+      <tr><td>Scheduler / worker</td><td>A separate BullMQ cron worker fires Inngest events at scheduled times. The email worker sends OTP messages outside the request cycle.</td></tr>
+      <tr><td>Third-party APIs</td><td>AI providers, Telegram, Discord, Slack, Google Sheets, arbitrary HTTP endpoints, SMTP, GitHub/Google OAuth, and Polar billing.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><b>Boundary rule</b> The Next.js application is the only public entry point. Background workers never expose HTTP. Inngest executes logic inside the deployed Next.js container through <code>/api/inngest</code>, so executors have access to the same Prisma client, encryption key, and environment configuration as the web tier.</div>
+</div>
+
+<!-- ============================ 04 DEPLOYMENT ============================ -->
+<div class="section">
+  <div class="eyebrow">04 · Deployment &amp; runtime topology</div>
+  <h2>Processes, containers, and managed services</h2>
+  <p class="lead">Production can run as a Next.js standalone container behind a load balancer (Docker/EKS) or on Vercel. In both cases Inngest, PostgreSQL, and Redis are managed outside the application process.</p>
+  <figure class="medium">
+    <img src="02-deployment.svg" alt="Deployment topology" />
+    <figcaption><b>Figure 2 — Runtime topology.</b> The web container serves UI, tRPC, auth, webhooks, health, and the Inngest endpoint. Email and cron workers are separate Node processes sharing Redis. Managed services provide database, queues, durable execution, and error tracking.</figcaption>
+  </figure>
+
+  <h3>Runtime components</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Component</th><th style="width:20%">Process</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Next.js server</td><td><code>next start</code> / standalone <code>server.js</code></td><td>RSC pages, client bundles, tRPC, Better Auth, webhook routes, Inngest function endpoint, health check.</td></tr>
+      <tr><td>Email worker</td><td><code>tsx src/queue/worker.ts</code></td><td>Consumes BullMQ <code>email</code> queue; sends OTP mail through SMTP with concurrency 2.</td></tr>
+      <tr><td>Cron worker</td><td><code>tsx src/queue/cron-worker.ts</code></td><td>Consumes BullMQ <code>cron</code> queue; converts each fired schedule into a <code>workflows/execute.workflow</code> event with initial cron data.</td></tr>
+      <tr><td>Inngest</td><td>Managed cloud / dev server</td><td>Schedules and runs <code>executeWorkflow</code>, retries steps, records runs, and fans out realtime messages.</td></tr>
+      <tr><td>PostgreSQL</td><td>Managed database</td><td>Primary datastore; Prisma migrations create the schema.</td></tr>
+      <tr><td>Redis (Upstash)</td><td>Managed Redis</td><td>BullMQ queues via the ioredis-compatible URL; rate limiting and idempotency via the REST API.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Development topology</h3>
+  <p><code>npm run dev:all</code> starts <code>mprocs</code>, which supervises five processes: ngrok (public webhook tunnel), Inngest dev server, email worker, cron worker, and the Next.js dev server with Turbopack. <code>npm run inngest:dev</code> starts only the Inngest dev UI; the application serves functions at <code>/api/inngest</code>.</p>
+
+  <h3>Production build and packaging</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Vercel</h4>
+      <p class="small"><code>vercel.json</code> sets the build command to <code>npm run vercel-build</code>, which runs <code>prisma generate &amp;&amp; next build</code>. Prisma targets <code>native</code> and <code>rhel-openssl-3.0.x</code>. Sentry wrapping is enabled only when <code>SENTRY_AUTH_TOKEN</code> is present.</p>
+    </div>
+    <div class="card">
+      <h4>Docker / EKS</h4>
+      <p class="small">The Dockerfile uses three stages: deps (npm ci, Prisma generate), builder (Next build with standalone output), and runner (non-root <code>nextjs</code> user, standalone server, Prisma schema and CLI). <code>node:22-slim</code> with OpenSSL is used because Prisma needs it.</p>
+    </div>
+  </div>
+  <div class="warn"><b>Operational note</b> Cron and email workers are not started by the Next.js container. A deployment must run them as separate processes/services, otherwise cron schedules will be registered but never fired and OTP emails will queue without being delivered.</div>
+</div>
+
+<!-- ============================ 05 LAYERS ============================ -->
+<div class="section">
+  <div class="eyebrow">05 · Application layers</div>
+  <h2>From page render to provider call</h2>
+  <p class="lead">The application is a layered modular monolith. Data flows inward through the App Router, tRPC boundary, feature modules, and domain services.</p>
+  <figure class="medium">
+    <img src="03-layers.svg" alt="Layered architecture" />
+    <figcaption><b>Figure 3 — Layered architecture.</b> Pages and client components sit above a typed tRPC boundary. Feature modules contain product logic. Shared services in <code>src/lib</code>, <code>src/inngest</code>, and <code>src/queue</code> encapsulate infrastructure.</figcaption>
+  </figure>
+
+  <h3>Layer responsibilities</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Layer</th><th style="width:31%">Location</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td>Presentation</td><td><code>src/app</code>, <code>src/components</code></td><td>Server pages call <code>requireAuth()</code>/<code>requireUnauth()</code>, prefetch tRPC data, wrap output in <code>HydrateClient</code>, and render client components inside Suspense and error boundaries.</td></tr>
+      <tr><td>API boundary</td><td><code>src/app/api/trpc</code>, <code>src/trpc</code></td><td>HTTP fetch adapter exposes <code>appRouter</code>. Procedure tiers add session and subscription checks. SuperJSON preserves dates and complex values.</td></tr>
+      <tr><td>Feature modules</td><td><code>src/features/&lt;feature&gt;</code></td><td>Each module owns <code>server/routers.ts</code>, <code>server/prefetch.ts</code>, <code>server/params-loader.ts</code>, <code>params.ts</code>, <code>hooks/</code>, and <code>components/</code>.</td></tr>
+      <tr><td>Domain services</td><td><code>src/lib</code>, <code>src/inngest</code>, <code>src/queue</code></td><td>Prisma access, encryption, auth, billing, queues, rate limits, idempotency, Inngest client/functions/channels, executor registry.</td></tr>
+      <tr><td>Data &amp; external</td><td>PostgreSQL, Redis, provider APIs</td><td>Durable state and third-party side effects. Only server-side code accesses these systems.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Server page pattern</h3>
+  <ol class="flowlist">
+    <li><code>requireAuth()</code> reads the session from request headers and redirects unauthenticated users to <code>/login</code>. Auth pages use <code>requireUnauth()</code> to redirect signed-in users to <code>/workflows</code>.</li>
+    <li>A feature-specific prefetch helper calls the tRPC query options proxy and primes a per-request React Query client created with <code>cache(makeQueryClient)</code>.</li>
+    <li><code>&lt;HydrateClient&gt;</code> dehydrates the query cache into a <code>HydrationBoundary</code>, so client components render instantly without a loading flash.</li>
+    <li>Client components use <code>useSuspenseQuery</code> through feature hooks and mutate via tRPC, invalidating related query keys on success.</li>
+  </ol>
+
+  <h3>Procedure tiers</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Procedure</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td><code>baseProcedure</code></td><td>Raw tRPC procedure with SuperJSON transformer. No session requirement.</td></tr>
+      <tr><td><code>protectedProcedure</code></td><td>Calls <code>auth.api.getSession({ headers })</code> and throws <code>UNAUTHORIZED</code> when no session exists. The resolved session is attached to <code>ctx.auth</code>.</td></tr>
+      <tr><td><code>premiumProcedure</code></td><td>Builds on protected: fetches the Polar customer by external id and throws <code>FORBIDDEN</code> unless at least one active subscription exists.</td></tr>
+    </tbody>
+  </table>
+  <div class="warn"><b>Important implementation detail</b> <code>createTRPCContext</code> is a stub that returns <code>{ userId: "user_123" }</code>. Authorization must rely on <code>ctx.auth.user.id</code> set by <code>protectedProcedure</code>, never on <code>ctx.userId</code>.</div>
+</div>
+
+<!-- ============================ 06 FEATURES ============================ -->
+<div class="section">
+  <div class="eyebrow">06 · Feature module map</div>
+  <h2>Product areas and their ownership</h2>
+  <p class="lead">The codebase is organised by product capability rather than technical artefact. Each module is a vertical slice with server and client responsibilities.</p>
+
+  <table>
+    <thead><tr><th style="width:15%">Feature</th><th style="width:34%">Responsibilities</th><th>Key files and components</th></tr></thead>
+    <tbody>
+      <tr><td><strong>auth</strong></td><td>Login, registration, email verification, auth layout and forms. Consumes Better Auth client and server session helpers.</td><td><code>features/auth/components/*</code>, <code>lib/auth.ts</code>, <code>lib/auth-client.ts</code>, <code>lib/auth-utils.ts</code>, <code>app/api/auth/[...all]</code></td></tr>
+      <tr><td><strong>workflows</strong></td><td>Workflow CRUD, ownership checks, pagination/search, graph load/save, execution trigger, free-tier limits, cron cleanup on delete.</td><td><code>features/workflows/server/routers.ts</code>, <code>prefetch.ts</code>, <code>hooks/use-workflows.ts</code>, <code>components/workflows.tsx</code></td></tr>
+      <tr><td><strong>credentials</strong></td><td>Encrypted credential CRUD, pagination/search, lookup by type for node dialogs. Creation gated by premium procedure.</td><td><code>features/credentials/server/routers.ts</code>, <code>components/credential.tsx</code>, <code>lib/encryption.ts</code></td></tr>
+      <tr><td><strong>editor</strong></td><td>React Flow canvas, dirty state, save header, add-node palette, execute button, editor instance atom.</td><td><code>features/editor/components/editor.tsx</code>, <code>editor-header.tsx</code>, <code>store/atoms.ts</code>, <code>config/node-components.ts</code></td></tr>
+      <tr><td><strong>executions</strong></td><td>Execution history and detail pages, node status hook, executor registry, per-node executors and dialogs, realtime channels, topological sort consumers.</td><td><code>features/executions/server/routers.ts</code>, <code>components/&lt;node&gt;/executor.ts</code>, <code>lib/executor-registry.ts</code>, <code>hooks/use-node-status.ts</code></td></tr>
+      <tr><td><strong>trigger</strong></td><td>Manual, cron, Google Form, Stripe, and Telegram triggers. Cron schedule reconciliation; webhook URL generation in dialogs; trigger executors.</td><td><code>features/trigger/components/*</code>, <code>lib/queue/cron.ts</code>, <code>app/api/webhooks/*</code>, <code>app/api/telegram/webhook/[workflowId]</code></td></tr>
+      <tr><td><strong>subscriptions</strong></td><td>Client subscription state hook and upgrade modal integration.</td><td><code>features/subscriptions/hooks/use-subscription.ts</code>, <code>components/upgrade-modal.tsx</code>, <code>lib/subscription.ts</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Shared UI and domain building blocks</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Shared components</h4>
+      <p class="small"><code>app-sidebar</code>, <code>app-header</code>, entity list states (loading/empty/error), theme provider/toggle, page transition, node selector, upgrade modal, and a large Radix-based UI kit under <code>src/components/ui</code>.</p>
+    </div>
+    <div class="card">
+      <h4>Shared libraries</h4>
+      <p class="small">Prisma client singleton, encryption, SMTP email, Telegram helpers and markdown conversion, Google Sheets client, Polar client and subscription check, Upstash rate limiting, Redis idempotency, queue connection/queue factories, and constants for pagination/limits.</p>
+    </div>
+  </div>
+
+  <h3>Router composition</h3>
+  <p>A single <code>appRouter</code> combines three feature routers: <code>workflows</code>, <code>credentials</code>, and <code>executions</code>. New feature routers are registered in <code>src/trpc/routers/_app.ts</code>, which also exports the inferred <code>appRouter</code> type consumed by the client and hooks.</p>
+</div>
+
+<!-- ============================ 07 DATA MODEL ============================ -->
+<div class="section">
+  <div class="eyebrow">07 · Data model</div>
+  <h2>PostgreSQL schema and relationships</h2>
+  <p class="lead">The schema separates identity (Better Auth tables), tenant-owned assets (workflows and credentials), graph structure (nodes and connections), and run history (executions).</p>
+  <figure class="tall">
+    <img src="04-er.svg" alt="Entity relationship diagram" />
+    <figcaption><b>Figure 4 — Entity relationship diagram.</b> A user owns workflows and credentials. A workflow contains nodes and connections and produces executions. A credential can be attached to many nodes. Better Auth owns user, session, account, and verification tables.</figcaption>
+  </figure>
+
+  <h3>Model notes</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Entity</th><th>Design notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>User</code></td><td>Primary key is a Better Auth string id. Email is unique. Relations cascade to sessions, accounts, workflows, and credentials.</td></tr>
+      <tr><td><code>Workflow</code></td><td>Belongs to a user. Holds a display name, timestamps, and the graph via child nodes/connections. Deleting a workflow cascades to its graph and executions.</td></tr>
+      <tr><td><code>Node</code></td><td>Belongs to a workflow. <code>type</code> is a Prisma enum. <code>position</code> and <code>data</code> are JSON, keeping node-specific configuration flexible without schema changes per node. Optional <code>credentialId</code> links an encrypted credential.</td></tr>
+      <tr><td><code>Connection</code></td><td>Directed edge from one node output to another node input. Uniqueness on <code>(fromNodeId, toNodeId, fromOutput, toInput)</code> prevents duplicate edges. Cascades when either node is deleted.</td></tr>
+      <tr><td><code>Credential</code></td><td>Type is one of ANTHROPIC, GEMINI, OPENAI, TELEGRAM, GOOGLE_SHEETS. <code>value</code> stores the Cryptr-encrypted secret. Never sent decrypted to the browser.</td></tr>
+      <tr><td><code>Execution</code></td><td>One row per run. <code>inngestEventId</code> is unique and links the row to the Inngest event. Status is RUNNING/SUCCESS/FAILED; error text and stack are stored for failed runs; <code>output</code> holds the final workflow context.</td></tr>
+      <tr><td><code>Session</code>, <code>Account</code>, <code>Verification</code></td><td>Managed by Better Auth/Prisma adapter. Account stores OAuth tokens or password hash; Verification supports OTP/verification flows.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Tenancy and integrity</h3>
+  <ul>
+    <li>Ownership is enforced in query predicates: workflows and credentials are always read or mutated with <code>userId: ctx.auth.user.id</code>; executions are filtered through <code>workflow.userId</code>.</li>
+    <li>Workflow creation locks the user row with <code>SELECT ... FOR UPDATE</code> inside a transaction before counting workflows, preventing concurrent creates from bypassing the free-tier limit.</li>
+    <li>Workflow updates run in a transaction: nodes are upserted, removed nodes are deleted, connections are replaced, and the workflow timestamp is touched.</li>
+    <li>Migrations are checked into <code>prisma/migrations</code>; the Prisma client is generated into <code>src/generated/prisma</code> at install/build time.</li>
+  </ul>
+</div>
+
+<!-- ============================ 08 AUTH & BILLING ============================ -->
+<div class="section">
+  <div class="eyebrow">08 · Authentication &amp; billing</div>
+  <h2>Identity, OTP delivery, OAuth, and premium gating</h2>
+  <p class="lead">Better Auth is the identity provider embedded in the Next.js app. It uses Prisma/PostgreSQL for persistence, email OTP for verification, social OAuth for convenience, and a Polar plugin for subscriptions.</p>
+  <figure class="medium">
+    <img src="05-auth-sequence.svg" alt="Authentication sequence" />
+    <figcaption><b>Figure 5 — Authentication sequence.</b> Email/password signup triggers an OTP delivered asynchronously through BullMQ and SMTP. Successful verification creates a Better Auth session. Polar creates a customer on signup and gates premium procedures by active subscription.</figcaption>
+  </figure>
+
+  <h3>Authentication capabilities</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Capability</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Email + password</td><td>Better Auth email/password enabled with auto sign-in. Email verification is required before access; signup and sign-in can resend verification.</td></tr>
+      <tr><td>Email OTP</td><td><code>emailOTP</code> plugin: 6 digits, 5-minute expiry, hashed storage, 5 allowed attempts, overrides default email verification. Sending is delegated to <code>enqueueOtpEmail</code>.</td></tr>
+      <tr><td>OTP cooldown</td><td>A custom Better Auth plugin intercepts <code>/email-otp/send-verification-otp</code> before a new code is generated. <code>otpSendAllowed(email)</code> prevents burning the queue and invalidating a previously sent code.</td></tr>
+      <tr><td>OAuth</td><td>GitHub and Google social providers configured from environment secrets. Trusted origins include the app URL, auth URL, and localhost variants.</td></tr>
+      <tr><td>Rate limits</td><td>Global Better Auth limit of 20 requests per 60s; OTP send limited to 3/min; OTP verify limited to 8 per 5 minutes.</td></tr>
+      <tr><td>Sessions</td><td>Server components and tRPC procedures call <code>auth.api.getSession({ headers })</code>. Session cookies are handled by the Better Auth route handler at <code>/api/auth/[...all]</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Email delivery path</h3>
+  <ol class="flowlist">
+    <li>Better Auth generates the OTP and calls <code>sendVerificationOTP</code>.</li>
+    <li><code>enqueueOtpEmail</code> adds an <code>otp</code> job to the BullMQ <code>email</code> queue. If Redis is not configured, it falls back to sending inline.</li>
+    <li>The email worker calls <code>sendOtpEmail</code>, which uses Nodemailer/SMTP. In development without SMTP it logs the OTP instead of failing.</li>
+    <li>Jobs retry up to 3 times with exponential backoff; completed jobs are removed and the last 1000 failures are retained.</li>
+  </ol>
+
+  <h3>Billing and entitlement</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Polar plugin</h4>
+      <p class="small">Creates a customer on signup, exposes checkout for the Nodebase Pro product, and a customer portal. The app uses the Polar SDK in sandbox mode with an access token.</p>
+    </div>
+    <div class="card">
+      <h4>Entitlement checks</h4>
+      <p class="small"><code>premiumProcedure</code> requires at least one active subscription. Credential creation uses it. Workflow creation checks subscription server-side and caps free users at 3 workflows; the usage endpoint reports count, limit, and premium state.</p>
+    </div>
+  </div>
+  <div class="note"><b>Failure behaviour</b> <code>isActiveSubscriber()</code> catches Polar errors and returns <code>false</code>, so billing outages degrade to free-tier limits rather than crashing workflow creation. Premium tRPC procedures still perform a direct Polar lookup and will reject when it fails.</div>
+</div>
+
+<!-- ============================ 09 EDITOR ============================ -->
+<div class="section">
+  <div class="eyebrow">09 · Visual editor architecture</div>
+  <h2>React Flow canvas, node registry, and save path</h2>
+  <p class="lead">The editor is a client-side React Flow instance hydrated with a workflow loaded through tRPC. Node appearance and behaviour are selected by a type registry; graph persistence is handled by a single tRPC mutation.</p>
+
+  <h3>Client composition</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Concern</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Canvas</td><td><code>ReactFlow</code> with pan-on-scroll, selection-on-drag, grid snapping, background, controls, and minimap. Nodes and edges are local state initialised from the suspense query result.</td></tr>
+      <tr><td>Node rendering</td><td><code>nodeComponents</code> maps every <code>NodeType</code> to a React component. Shared bases provide consistent handles, status indicators, and layout.</td></tr>
+      <tr><td>Editing</td><td>Node/edge changes are applied through React Flow helpers. Non-selection changes set <code>isDirtyAtom</code>. New connections use <code>addEdge</code>.</td></tr>
+      <tr><td>Editor instance</td><td><code>editorAtom</code> stores the React Flow instance so the header can call <code>getNodes()</code> and <code>getEdges()</code> when saving.</td></tr>
+      <tr><td>Node configuration</td><td>Each node type has a dialog that writes configuration into <code>node.data</code>. Credentials are selected by type and referenced by id; secret values never leave the server.</td></tr>
+      <tr><td>Execution control</td><td>The execute button is shown only when a manual trigger exists. It calls <code>workflows.execute</code>.</td></tr>
+      <tr><td>Realtime status</td><td>Each node uses <code>useNodeStatus</code> with its channel and a server action that returns an Inngest subscription token. Status values are <code>initial</code>, <code>loading</code>, <code>success</code>, and <code>error</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Save transaction</h3>
+  <p>Pressing Save sends the complete node and edge snapshot to <code>workflows.update</code>. The server verifies ownership, then inside a transaction:</p>
+  <ul class="twocol">
+    <li>Upserts every submitted node by id, updating position and type.</li>
+    <li>Overwrites <code>data</code> only when the client sends a non-empty object, protecting configuration when the editor has an incomplete snapshot.</li>
+    <li>Deletes nodes that no longer exist in the submitted graph.</li>
+    <li>Replaces all connections with the submitted edges.</li>
+    <li>Updates the workflow timestamp.</li>
+    <li>After the mutation, the client calls <code>syncCronSchedules</code> to reconcile BullMQ repeatable jobs.</li>
+  </ul>
+  <div class="ok"><b>Design choice</b> Node upsert + selective data overwrite is safer than delete-all-and-recreate: it preserves node configuration and ids when the client snapshot is partial, while still allowing node and edge removal.</div>
+
+  <h3>List and detail pages</h3>
+  <p>Workflows, credentials, and executions share an entity-page pattern: server-side auth and prefetch, URL-driven pagination/search through nuqs, suspense queries on the client, and reusable loading/empty/error states. The editor page sits in a separate route group so it can use a full-height canvas layout without the standard dashboard content shell.</p>
+</div>
+
+<!-- ============================ 10 EXECUTION ============================ -->
+<div class="section">
+  <div class="eyebrow">10 · Workflow execution engine</div>
+  <h2>One durable function, ordered node executors, shared context</h2>
+  <p class="lead">All runs enter Inngest as <code>workflows/execute.workflow</code>. The single <code>executeWorkflow</code> function creates an execution record, loads the graph, sorts it, and runs each node's executor in sequence while publishing live status.</p>
+  <figure class="medium">
+    <img src="06-execution-sequence.svg" alt="Workflow execution sequence" />
+    <figcaption><b>Figure 6 — Execution sequence.</b> The mutation verifies ownership and emits an Inngest event. The function creates an Execution, topologically sorts the graph, invokes registered executors, merges each result into the context, publishes status, and finalises the run.</figcaption>
+  </figure>
+
+  <h3>Execution steps</h3>
+  <ol class="flowlist">
+    <li><strong>Event validation.</strong> The function requires an Inngest event id and workflow id, otherwise it throws <code>NonRetriableError</code>.</li>
+    <li><strong>Create execution.</strong> A <code>step.run("create-execution")</code> inserts an <code>Execution</code> with status RUNNING and the unique Inngest event id. A database conflict is treated as non-retriable.</li>
+    <li><strong>Prepare workflow.</strong> A second step loads nodes and connections and runs <code>topologicalSort</code>. If connections are empty, nodes retain their order. Disconnected nodes are added as self-edges. Cycles raise an error.</li>
+    <li><strong>Resolve owner.</strong> The workflow's <code>userId</code> is loaded and passed to executors so credential lookups remain tenant-scoped.</li>
+    <li><strong>Initialise context.</strong> <code>event.data.initialData</code> seeds the mutable <code>WorkflowContext</code> (for example <code>googleForm</code>, <code>stripe</code>, <code>telegram</code>, or <code>cron</code>).</li>
+    <li><strong>Execute nodes.</strong> For each node, <code>getExecutor(node.type)</code> resolves the implementation. The executor receives node data, id, user id, context, the Inngest step tool, and the realtime publish function.</li>
+    <li><strong>Thread context.</strong> Each executor returns a new context object; results are namespaced by the node's configured variable name so later nodes can reference earlier outputs.</li>
+    <li><strong>Finalise.</strong> A final step sets status SUCCESS, completion time, and the output context. Any unhandled failure triggers <code>onFailure</code>, which marks the execution FAILED and stores the error message and stack.</li>
+  </ol>
+
+  <h3>Executor contract</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Input</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>data</code></td><td>Node-specific configuration persisted in the JSON column (prompts, endpoint, variable name, credential id, operation, etc.).</td></tr>
+      <tr><td><code>nodeId</code></td><td>Identifies the node for realtime status messages.</td></tr>
+      <tr><td><code>userId</code></td><td>Scopes credential reads to the workflow owner.</td></tr>
+      <tr><td><code>context</code></td><td>Accumulated outputs from earlier nodes; used as the Handlebars template context.</td></tr>
+      <tr><td><code>step</code></td><td>Inngest step tools, used for memoised/retryable units such as HTTP calls, credential reads, and AI generation.</td></tr>
+      <tr><td><code>publish</code></td><td>Realtime publish function bound to the node's channel.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Realtime status contract</h3>
+  <p>Every node type has a dedicated Inngest channel. Each published message has the shape <code>{ nodeId, status }</code> where status is <code>loading</code>, <code>success</code>, or <code>error</code>. The browser obtains a short-lived subscription token through a server action, then filters the latest message for the node. This is presentation-only state; the durable outcome is the Execution row.</p>
+
+  <div class="note"><b>Templating</b> Action nodes compile configuration through Handlebars against the current context. A custom <code>json</code> helper pretty-prints context values, enabling prompts and request bodies to embed prior node output. Validation failures publish <code>error</code> and throw <code>NonRetriableError</code> so Inngest does not retry misconfiguration.</div>
+</div>
+
+<!-- ============================ 11 TRIGGERS ============================ -->
+<div class="section">
+  <div class="eyebrow">11 · Trigger architecture</div>
+  <h2>Manual, scheduled, and webhook-driven runs</h2>
+  <p class="lead">All trigger paths converge on the same Inngest event. They differ in how the event is produced and what initial data is attached.</p>
+  <figure class="medium">
+    <img src="07-trigger-routing.svg" alt="Trigger routing" />
+    <figcaption><b>Figure 7 — Trigger routing.</b> Manual runs are authenticated through tRPC. Cron runs are registered in BullMQ and fired by the cron worker. Webhooks pass through rate limiting, idempotency, and (for Telegram) a provider secret before emitting the unified event.</figcaption>
+  </figure>
+
+  <h3>Trigger comparison</h3>
+  <table class="compact">
+    <thead><tr><th style="width:20%">Trigger</th><th style="width:31%">Ingress</th><th>Initial data and notes</th></tr></thead>
+    <tbody>
+      <tr><td>Manual</td><td>tRPC <code>workflows.execute</code></td><td>Verifies workflow ownership, then sends the event with only <code>workflowId</code>. The execute button is visible when a manual trigger node exists.</td></tr>
+      <tr><td>Cron</td><td>BullMQ repeatable scheduler → cron worker</td><td>Schedules are stored in cron node data and registered with <code>upsertJobScheduler</code>. Key is <code>cron:&lt;nodeId&gt;:&lt;scheduleId&gt;</code>; timezone, start/end date, and cron pattern are honoured. Worker sends <code>initialData.cron</code>.</td></tr>
+      <tr><td>Google Form</td><td><code>POST /api/webhooks/google-form?workflowId=</code></td><td>Normalises form id/title/response id/timestamp/respondent/responses/raw into <code>initialData.googleForm</code>. Idempotency key uses response id.</td></tr>
+      <tr><td>Stripe</td><td><code>POST /api/webhooks/stripe?workflowId=</code></td><td>Normalises event id/type/timestamp/livemode/object into <code>initialData.stripe</code>. Idempotency key uses event id.</td></tr>
+      <tr><td>Telegram</td><td><code>POST /api/telegram/webhook/[workflowId]</code></td><td>Resolves the workflow's Telegram trigger node and credential, decrypts the bot token, and validates the Telegram secret header with a timing-safe comparison. Messages become <code>initialData.telegram</code>; callback queries are acknowledged without starting a run.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Schedule reconciliation</h3>
+  <p>Cron schedules are owned by the node data, not by a separate schedule table. When a workflow is saved, <code>syncCronSchedules(workflowId)</code> authenticates the user, filters cron nodes, registers each schedule, and removes schedulers whose node ids no longer exist. Deleting a workflow explicitly removes its cron schedulers before deleting the database row. Upsert semantics make repeated saves idempotent.</p>
+
+  <h3>Webhook protections</h3>
+  <div class="grid3">
+    <div class="card"><h4>Rate limiting</h4><p class="small">Upstash sliding-window limiter per workflow: Google Form 30/min, Stripe 120/min, Telegram 60/min by default, configurable through environment variables.</p></div>
+    <div class="card"><h4>Idempotency</h4><p class="small">A Redis <code>SET NX EX</code> key with 24-hour TTL suppresses duplicate provider deliveries. When Redis is absent, events are accepted without dedupe.</p></div>
+    <div class="card"><h4>Origin validation</h4><p class="small">Telegram uses a derived bot secret and constant-time comparison. Stripe and Google Form rely on provider configuration and workflow-scoped URLs; no session is required.</p></div>
+  </div>
+</div>
+
+<!-- ============================ 12 NODE EXTENSION ============================ -->
+<div class="section">
+  <div class="eyebrow">12 · Node extension model</div>
+  <h2>Adding a node type in five coordinated places</h2>
+  <p class="lead">Node types are intentionally explicit. A new capability is added by editing five registries so the database, runtime, editor, and UI stay in sync.</p>
+  <figure class="tall">
+    <img src="08-node-lifecycle.svg" alt="Node lifecycle" />
+    <figcaption><b>Figure 8 — Node type touchpoints and save lifecycle.</b> Configuration is written through the editor, persisted via a tRPC transaction, and reconciled with BullMQ. A new node type must be registered in the enum, realtime channels, executor registry, React Flow node registry, and node selector/dialog.</figcaption>
+  </figure>
+
+  <table class="compact">
+    <thead><tr><th style="width:8%">#</th><th style="width:30%">Touchpoint</th><th>What to add</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>prisma/schema.prisma</code> → <code>NodeType</code></td><td>New enum value plus a migration. Node type is persisted on every node row.</td></tr>
+      <tr><td>2</td><td><code>src/inngest/channels/</code></td><td>Realtime channel definition. Register it in the <code>executeWorkflow</code> function's channel list.</td></tr>
+      <tr><td>3</td><td><code>src/features/executions/components/&lt;type&gt;/executor.ts</code></td><td>Executor implementing the common contract; publish loading/success/error; validate config; read credentials server-side. Register in <code>executor-registry.ts</code>.</td></tr>
+      <tr><td>4</td><td><code>src/features/executions/components/&lt;type&gt;/node.tsx</code></td><td>React Flow node component. Register in <code>src/config/node-components.ts</code>.</td></tr>
+      <tr><td>5</td><td><code>src/features/executions/components/&lt;type&gt;/dialog.tsx</code></td><td>Configuration dialog and node selector entry. Trigger nodes live under <code>src/features/trigger</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Current node catalogue</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Category</th><th>Node types</th></tr></thead>
+    <tbody>
+      <tr><td>Trigger</td><td>Manual trigger, Cron trigger, Google Form trigger, Stripe trigger, Telegram trigger, Initial placeholder</td></tr>
+      <tr><td>AI</td><td>OpenAI, Anthropic, Gemini — credential-backed text generation with system/user prompt templates</td></tr>
+      <tr><td>HTTP</td><td>HTTP request — method, templated endpoint/body, JSON or text response stored under a variable name</td></tr>
+      <tr><td>Messaging</td><td>Telegram send message, Telegram send buttons, Discord, Slack</td></tr>
+      <tr><td>Productivity</td><td>Google Sheets — append, read, or update rows with a service-account credential</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ok"><b>Consistency guarantee</b> The typed <code>ExecutorRegistry</code> requires an entry for every NodeType, so adding an enum value without an executor is a compile-time error. The NodeTypes map similarly keeps the editor registry exhaustive.</div>
+</div>
+
+<!-- ============================ 13 SECURITY ============================ -->
+<div class="section">
+  <div class="eyebrow">13 · Security &amp; multi-tenancy</div>
+  <h2>Trust boundaries and data protection</h2>
+  <p class="lead">Security relies on session validation inside procedures, ownership predicates on every tenant asset, encryption of secrets, and layered protections for unauthenticated webhooks.</p>
+
+  <table>
+    <thead><tr><th style="width:23%">Control</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Authentication</td><td>Better Auth sessions validated from request headers. <code>protectedProcedure</code> rejects missing sessions with <code>UNAUTHORIZED</code>. Server pages redirect through <code>requireAuth</code>.</td></tr>
+      <tr><td>Authorization / tenancy</td><td>All workflow, credential, node, and execution access is scoped by the authenticated user or through <code>workflow.userId</code>. There is no cross-tenant id lookup path in the exposed routers.</td></tr>
+      <tr><td>Plan gating</td><td><code>premiumProcedure</code> validates active Polar subscriptions. Credential creation is premium-only. Workflow creation enforces a server-side free cap of 3 with a row lock.</td></tr>
+      <tr><td>Secret storage</td><td>Credentials are encrypted with Cryptr using <code>ENCRYPTION_KEY</code>. Decryption occurs only inside executors and the Telegram webhook handler, never in list/detail responses.</td></tr>
+      <tr><td>Webhook authenticity</td><td>Telegram secret token is derived per bot/workflow and compared with <code>timingSafeEqual</code>. Public webhook URLs are workflow-scoped; rate limits and idempotency reduce abuse and replay.</td></tr>
+      <tr><td>Abuse prevention</td><td>Better Auth global and OTP-specific rate limits; OTP cooldown plugin; Upstash per-workflow webhook limits; duplicate suppression through Redis.</td></tr>
+      <tr><td>Transport &amp; headers</td><td>Trusted origins restrict Better Auth callbacks. Production is expected to terminate TLS at the load balancer or platform edge. Dev ngrok origins are explicitly allowed.</td></tr>
+      <tr><td>Error reporting</td><td>Sentry captures server, edge, and client errors. Execution errors are persisted for user-visible run history.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Trust boundaries</h3>
+  <ul>
+    <li><strong>Browser → Next.js:</strong> session cookie and tRPC/HTTP requests. All inputs validated with Zod at the procedure boundary.</li>
+    <li><strong>Provider → Next.js webhooks:</strong> unauthenticated but protected by provider secret/configuration, rate limits, idempotency, and workflow lookup.</li>
+    <li><strong>Next.js → Inngest:</strong> signed events via event/signing keys. The function endpoint is served by the app.</li>
+    <li><strong>Executor → third-party API:</strong> short-lived server-side call using decrypted credentials; results are returned into the workflow context.</li>
+    <li><strong>App → database/Redis:</strong> private network or TLS-managed endpoints, credentials from environment.</li>
+  </ul>
+
+  <div class="bad"><b>Known security gotcha</b> The tRPC context stub must never be used for authorization. Always use <code>ctx.auth.user.id</code> from the session attached by <code>protectedProcedure</code>. The stub <code>userId</code> is a constant and does not represent the caller.</div>
+</div>
+
+<!-- ============================ 14 RELIABILITY ============================ -->
+<div class="section">
+  <div class="eyebrow">14 · Reliability &amp; observability</div>
+  <h2>Failure handling, retries, and run history</h2>
+  <p class="lead">Reliability is achieved through durable execution, explicit non-retriable validation errors, durable run records, and queue-level retry policies.</p>
+
+  <h3>Failure and retry matrix</h3>
+  <table class="compact">
+    <thead><tr><th style="width:25%">Component</th><th>Policy / behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Inngest function</td><td><code>retries: 3</code> in production, <code>0</code> in development. Steps are memoised; failed steps retry without re-running successful ones.</td></tr>
+      <tr><td>Node validation</td><td>Missing endpoint, method, credential, prompt, variable name, spreadsheet id/range, etc. publish <code>error</code> and throw <code>NonRetriableError</code>.</td></tr>
+      <tr><td>Function failure handler</td><td><code>onFailure</code> updates the Execution by unique Inngest event id to FAILED and stores message and stack.</td></tr>
+      <tr><td>Execution creation conflict</td><td>Unique <code>inngestEventId</code> protects against duplicate execution rows; the conflict is surfaced as non-retriable.</td></tr>
+      <tr><td>Email queue</td><td>3 attempts with exponential backoff (2s), completed jobs removed, up to 1000 failed jobs retained.</td></tr>
+      <tr><td>Cron queue</td><td>3 attempts with exponential backoff (5s), completed jobs removed, up to 100 failed jobs retained. Scheduler upserts are idempotent.</td></tr>
+      <tr><td>Webhook duplicates</td><td>Redis <code>SET NX</code> idempotency key returns success without emitting a second event; TTL 24 hours.</td></tr>
+      <tr><td>Rate limiting outage</td><td>When Upstash REST credentials are absent, rate limiting and idempotency are disabled with warnings rather than breaking ingress.</td></tr>
+      <tr><td>Billing outage</td><td>Subscription check for workflow creation degrades to free tier; premium procedures fail closed with FORBIDDEN.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Observability surfaces</h3>
+  <div class="grid3">
+    <div class="card"><h4>Execution records</h4><p class="small">Status, timestamps, final output, error message and stack per run. UI exposes history and detail pages.</p></div>
+    <div class="card"><h4>Realtime events</h4><p class="small">Per-node loading/success/error messages let users see progress while a durable run is in flight.</p></div>
+    <div class="card"><h4>Sentry</h4><p class="small">Server/edge instrumentation plus <code>onRequestError</code> capture. Optional source map upload and tunnel route.</p></div>
+    <div class="card"><h4>Health endpoint</h4><p class="small"><code>GET /api/health</code> returns <code>{ status: "ok" }</code> for load balancer or platform probes.</p></div>
+    <div class="card"><h4>Queue admin</h4><p class="small"><code>/admin/queues/[[...path]]</code> exposes an email-queue dashboard; in production it is disabled unless dashboard credentials are configured.</p></div>
+    <div class="card"><h4>Logs</h4><p class="small">Workers log completed/failed jobs. Email has a development OTP fallback for local testing.</p></div>
+  </div>
+
+  <div class="warn"><b>Operational gap</b> The repository does not configure an automated test runner. Verification is expected to be Biome lint, <code>npx tsc --noEmit</code>, and a production build. Adding integration tests around trigger ingress, execution ordering, and tenancy is the highest-value reliability improvement.</div>
+</div>
+
+<!-- ============================ 15 DEPLOYMENT ============================ -->
+<div class="section">
+  <div class="eyebrow">15 · Deployment &amp; operations</div>
+  <h2>Build, migrate, run, and configure</h2>
+  <p class="lead">Nodebase can be delivered as a Vercel application or a standalone container, provided the auxiliary workers and managed services are running.</p>
+
+  <h3>Commands</h3>
+  <table class="compact">
+    <thead><tr><th style="width:23%">Command</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run dev</code></td><td>Next.js dev server with Turbopack.</td></tr>
+      <tr><td><code>npm run dev:all</code></td><td>mprocs supervisor: ngrok, Inngest dev, email worker, cron worker, Next.js.</td></tr>
+      <tr><td><code>npm run worker</code></td><td>Email worker via dotenv + tsx.</td></tr>
+      <tr><td><code>npm run cron-worker</code></td><td>Cron worker via dotenv + tsx.</td></tr>
+      <tr><td><code>npm run build</code> / <code>npm run start</code></td><td>Production Next.js build and server.</td></tr>
+      <tr><td><code>npm run vercel-build</code></td><td><code>prisma generate &amp;&amp; next build</code> for Vercel.</td></tr>
+      <tr><td><code>npx prisma migrate dev</code> / <code>deploy</code></td><td>Create/apply migrations in development or production.</td></tr>
+      <tr><td><code>npm run lint</code></td><td><code>biome check</code> (lint + import organisation).</td></tr>
+      <tr><td><code>npx tsc --noEmit</code></td><td>Type checking (no dedicated script).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Environment configuration</h3>
+  <table class="compact">
+    <thead><tr><th style="width:27%">Group</th><th>Variables</th></tr></thead>
+    <tbody>
+      <tr><td>Core</td><td><code>DATABASE_URL</code>, <code>NEXT_PUBLIC_APP_URL</code>, <code>NODE_ENV</code></td></tr>
+      <tr><td>Auth</td><td><code>BETTER_AUTH_SECRET</code>, <code>BETTER_AUTH_URL</code>, <code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>, <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code></td></tr>
+      <tr><td>Security</td><td><code>ENCRYPTION_KEY</code> (Cryptr), <code>UPSTASH_REDIS_REST_URL</code>, <code>UPSTASH_REDIS_REST_TOKEN</code></td></tr>
+      <tr><td>Billing</td><td><code>POLAR_ACCESS_TOKEN</code>, <code>POLAR_SUCCESS_URL</code></td></tr>
+      <tr><td>Execution</td><td><code>INNGEST_EVENT_KEY</code>, <code>INNGEST_SIGNING_KEY</code></td></tr>
+      <tr><td>Queues</td><td><code>UPSTASH_REDIS_URL</code> (ioredis-compatible connection for BullMQ)</td></tr>
+      <tr><td>Email</td><td><code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code>, <code>EMAIL_FROM</code></td></tr>
+      <tr><td>Rate limits</td><td><code>RATE_LIMIT_GOOGLE_FORM_PER_MIN</code>, <code>RATE_LIMIT_STRIPE_PER_MIN</code>, <code>RATE_LIMIT_TELEGRAM_PER_MIN</code></td></tr>
+      <tr><td>Observability</td><td><code>SENTRY_AUTH_TOKEN</code> (optional build upload)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Deployment checklist</h3>
+  <ol class="flowlist">
+    <li>Provision PostgreSQL and run Prisma migrations. Generate the Prisma client during build.</li>
+    <li>Provision Upstash Redis. Provide both the REST credentials (rate limit, idempotency) and the ioredis URL (BullMQ).</li>
+    <li>Configure Inngest cloud with the event and signing keys, and ensure it can reach <code>/api/inngest</code> at the public app URL.</li>
+    <li>Run the email and cron workers as separate long-lived processes with the same environment and Redis URL.</li>
+  </ol>
+
+</div>
+
+<!-- ============================ 16 DECISIONS ============================ -->
+<div class="section">
+  <div class="eyebrow">16 · Design decisions &amp; known risks</div>
+  <h2>Why the system looks like this</h2>
+  <p class="lead">The architecture favours a small number of well-understood primitives: one web application, one durable function, explicit registries, and managed state. The trade-offs are intentional.</p>
+
+  <table>
+    <thead><tr><th style="width:30%">Decision</th><th style="width:34%">Rationale</th><th>Trade-off</th></tr></thead>
+    <tbody>
+      <tr><td>Inngest for workflow execution</td><td>Long-running AI and HTTP calls need retries, step memoisation, and a failure handler without building a custom job runner.</td><td>Execution depends on Inngest availability and correct signing/event configuration. The function is served by the web container, so the web tier must remain reachable.</td></tr>
+      <tr><td>BullMQ for cron and email</td><td>Repeatable jobs provide precise cron scheduling with timezones and start/end dates. Email delivery is decoupled from signup latency.</td><td>Two extra worker processes must be deployed and monitored. Redis is a hard dependency for cron/email.</td></tr>
+      <tr><td>PostgreSQL as workflow source of truth</td><td>Graph state is easy to inspect, migrate, and query. Events stay small and point at a workflow id.</td><td>The graph is re-read at execution time; editing during a run affects only future runs, and very large graphs add query overhead.</td></tr>
+      <tr><td>Explicit node registries</td><td>Compile-time exhaustiveness catches missing executors/renderers. Node behaviour stays colocated and reviewable.</td><td>Adding a node requires coordinated edits across five areas and a migration.</td></tr>
+      <tr><td>Encrypt credentials at rest</td><td>Provider secrets are valuable; they should never be readable from the database or client bundle.</td><td>Key rotation and <code>ENCRYPTION_KEY</code> management become critical operational concerns.</td></tr>
+      <tr><td>Upsert + selective data overwrite on save</td><td>Protects node configuration from incomplete client snapshots while still supporting deletion and rewiring.</td><td>More complex transaction logic than delete-and-recreate; requires careful client snapshot semantics.</td></tr>
+      <tr><td>Realtime per-node channels</td><td>Users get immediate visual feedback without polling the database.</td><td>Status is ephemeral; reconnecting clients may miss transient transitions. Durable history is the Execution row.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Known risks and technical debt</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Context stub</h4>
+      <p class="small"><code>createTRPCContext</code> returns a hard-coded user id. Any future code that trusts it for authorization would create a tenant-isolation vulnerability. Keep authentication inside procedures.</p>
+    </div>
+    <div class="card">
+      <h4>OpenAI channel copy-paste bug</h4>
+      <p class="small">The OpenAI executor publishes an Anthropic channel message on the missing-credential branch. This can leave OpenAI nodes visually stuck; the channel import should be corrected.</p>
+    </div>
+    <div class="card">
+      <h4>No automated tests</h4>
+      <p class="small">There is no test runner configured. Regression coverage for topological sort, trigger ingress, idempotency, tenancy, and executor contracts is missing.</p>
+    </div>
+    <div class="card">
+      <h4>Type checking bypassed in build</h4>
+      <p class="small"><code>next.config.ts</code> sets <code>typescript.ignoreBuildErrors: true</code>. CI should run <code>tsc --noEmit</code> explicitly or the build can ship type errors.</p>
+    </div>
+    <div class="card">
+      <h4>Webhook source verification</h4>
+      <p class="small">Stripe and Google Form webhooks are workflow-scoped and rate-limited but do not verify provider signatures in the route handlers. Adding signature verification would harden ingress.</p>
+    </div>
+    <div class="card">
+      <h4>Worker deployment coupling</h4>
+      <p class="small">Cron and email correctness depends on separately running workers. A deployment that only ships the Next.js container silently loses scheduling and email delivery.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 17 APPENDIX ============================ -->
+<div class="section">
+  <div class="eyebrow">17 · Appendix</div>
+  <h2>Reference tables</h2>
+
+  <h3>HTTP routes</h3>
+  <table class="compact">
+    <thead><tr><th style="width:42%">Route</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code></td><td>Landing page.</td></tr>
+      <tr><td><code>/login</code>, <code>/signup</code>, <code>/verify-email</code></td><td>Auth pages; redirect signed-in users away.</td></tr>
+      <tr><td><code>/workflows</code></td><td>Workflow list with search and pagination.</td></tr>
+      <tr><td><code>/workflows/[workflowId]</code></td><td>Full-screen React Flow editor.</td></tr>
+      <tr><td><code>/credentials</code>, <code>/credentials/new</code>, <code>/credentials/[credentialId]</code></td><td>Credential list, create, and edit.</td></tr>
+      <tr><td><code>/executions</code>, <code>/executions/[executionId]</code></td><td>Run history and run detail.</td></tr>
+      <tr><td><code>/api/trpc/[trpc]</code></td><td>tRPC fetch handler.</td></tr>
+      <tr><td><code>/api/auth/[...all]</code></td><td>Better Auth handler (session, OAuth, OTP, Polar plugin endpoints).</td></tr>
+      <tr><td><code>/api/inngest</code></td><td>Inngest serve endpoint for <code>executeWorkflow</code>.</td></tr>
+      <tr><td><code>/api/webhooks/google-form?workflowId=</code></td><td>Google Form webhook ingress.</td></tr>
+      <tr><td><code>/api/webhooks/stripe?workflowId=</code></td><td>Stripe webhook ingress.</td></tr>
+      <tr><td><code>/api/telegram/webhook/[workflowId]</code></td><td>Telegram bot update ingress with secret validation.</td></tr>
+      <tr><td><code>/api/health</code></td><td>Liveness/readiness probe.</td></tr>
+      <tr><td><code>/admin/queues/[[...path]]</code></td><td>BullMQ queue dashboard route.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>tRPC procedures</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Router</th><th style="width:34%">Procedure</th><th>Tier / behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>workflows</td><td><code>execute</code></td><td>Protected mutation; ownership check then Inngest event.</td></tr>
+      <tr><td>workflows</td><td><code>create</code></td><td>Protected mutation; free cap with row lock, premium bypass.</td></tr>
+      <tr><td>workflows</td><td><code>usage</code></td><td>Protected query; count, free limit, premium state.</td></tr>
+      <tr><td>workflows</td><td><code>remove</code></td><td>Protected mutation; removes cron schedulers, then deletes.</td></tr>
+      <tr><td>workflows</td><td><code>update</code></td><td>Protected mutation; transactional node upsert/delete, connection replacement.</td></tr>
+      <tr><td>workflows</td><td><code>updateName</code></td><td>Protected mutation.</td></tr>
+      <tr><td>workflows</td><td><code>getOne</code></td><td>Protected query; transforms nodes/connections to React Flow shapes.</td></tr>
+      <tr><td>workflows</td><td><code>getMany</code></td><td>Protected paginated/search query.</td></tr>
+      <tr><td>credentials</td><td><code>create</code>, <code>update</code></td><td>Create is premium; value encrypted before persistence.</td></tr>
+      <tr><td>credentials</td><td><code>remove</code>, <code>getOne</code>, <code>getMany</code>, <code>getByType</code></td><td>Protected; owner-scoped; type lookup feeds node dialogs.</td></tr>
+      <tr><td>executions</td><td><code>getOne</code>, <code>getMany</code></td><td>Protected; scoped through <code>workflow.userId</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Node type → executor / channel</h3>
+  <table class="compact">
+    <thead><tr><th style="width:35%">Node type</th><th>Executor / behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>INITIAL</td><td>Mapped to manual trigger executor for placeholder nodes.</td></tr>
+      <tr><td>MANUAL_TRIGGER</td><td>Passes context through; enables the editor execute button.</td></tr>
+      <tr><td>CRON_TRIGGER</td><td>Passes context; schedule registration is handled by BullMQ, not the executor.</td></tr>
+      <tr><td>GOOGLE_FORM_TRIGGER / STRIPE_TRIGGER / TELEGRAM_TRIGGER</td><td>Pass through initial data supplied by their webhook routes.</td></tr>
+      <tr><td>HTTP_REQUEST</td><td>ky call with Handlebars-resolved endpoint/body; response stored under variable name.</td></tr>
+      <tr><td>OPENAI / ANTHROPIC / GEMINI</td><td>AI SDK text generation with decrypted provider credential and templated prompts.</td></tr>
+      <tr><td>TELEGRAM_SEND_MESSAGE / TELEGRAM_SEND_BUTTONS</td><td>Telegram Bot API calls using decrypted bot token; markdown conversion helper available.</td></tr>
+      <tr><td>DISCORD / SLACK</td><td>Webhook-based message delivery.</td></tr>
+      <tr><td>GOOGLE_SHEETS</td><td>Service-account JWT; append, read, or update rows.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="small" style="margin-top:5mm"><strong>Document scope.</strong> This architecture reflects the repository contents and configuration at generation time. Diagrams are rendered from Mermaid sources stored alongside this PDF in <code>docs/architecture/</code>; the editable HTML source is <code>docs/architecture/system-architecture.html</code>.</p>
+</div>
+
+</body>
+</html>

@@ -30,7 +30,6 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import {
@@ -700,6 +699,7 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { data: session } = authClient.useSession();
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -782,14 +782,24 @@ function Navbar() {
               </button>
             )}
             <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Log in</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href="/signup">
-                  Get Started <ArrowRight className="size-3.5" />
-                </Link>
-              </Button>
+              {mounted && session ? (
+                <Button size="sm" asChild>
+                  <Link href="/workflows">
+                    Go to My Workflows <ArrowRight className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/login">Log in</Link>
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link href="/signup">
+                      Get Started <ArrowRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
             <button
               type="button"
@@ -829,14 +839,24 @@ function Navbar() {
               );
             })}
             <div className="pt-2 space-y-2">
-              <Button variant="outline" className="w-full" asChild>
-                <Link href="/login">Log in</Link>
-              </Button>
-              <Button className="w-full" asChild>
-                <Link href="/signup">
-                  Get Started <ArrowRight className="size-3.5" />
-                </Link>
-              </Button>
+              {mounted && session ? (
+                <Button className="w-full" asChild>
+                  <Link href="/workflows" onClick={() => setMobileOpen(false)}>
+                    Go to My Workflows <ArrowRight className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/login">Log in</Link>
+                  </Button>
+                  <Button className="w-full" asChild>
+                    <Link href="/signup">
+                      Get Started <ArrowRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -960,14 +980,6 @@ function WorkflowNodes() {
 }
 
 export default function LandingPage() {
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
-
-  useEffect(() => {
-    if (!isPending && session) {
-      router.push("/workflows");
-    }
-  }, [session, isPending, router]);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);

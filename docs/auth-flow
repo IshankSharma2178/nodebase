@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    participant U as User (browser)
+    participant E as Editor (React Flow)
+    participant S as Next.js server (tRPC)
+    participant D as Postgres (Prisma)
+    participant I as Inngest
+    participant X as Provider (AI / HTTP / messaging)
+    participant R as Realtime channel
+
+    U->>E: Run workflow (manual trigger)
+    E->>S: protectedProcedure workflows.execute
+    S->>D: INSERT execution? (dispatched via Inngest)
+    S->>I: sendWorkflowExecution event workflows/execute.workflow
+    I->>D: step create-execution (status RUNNING)
+    I->>D: prepare-workflow + find-user-id
+    I->>I: topologicalSort(nodes, connections)
+    loop each node in order
+        I->>R: publish status loading
+        R-->>E: node -> loading
+        I->>X: executor performs work (AI / HTTP / messaging)
+        X-->>I: result merged into context
+        alt success
+            I->>R: publish status success
+            R-->>E: node -> success
+        else error
+            I->>R: publish status error
+            R-->>E: node -> error
+            I->>I: retries = 3 in prod, 0 in dev
+        end
+    end
+    I->>D: update-execution SUCCESS, output = context
+    alt function exhausted retries
+        I->>D: onFailure -> Execution FAILED + errorStack
+    end
+    E->>S: useSuspenseQuery refresh executions
+    S->>D: read execution history
+    D-->>E: list with status + output

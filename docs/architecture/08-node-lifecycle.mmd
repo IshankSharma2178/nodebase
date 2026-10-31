@@ -1,0 +1,23 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#f0f9ff','primaryBorderColor':'#0284c7','primaryTextColor':'#082f49','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+flowchart TB
+  subgraph SERVER["Server-side save path"]
+    SD["Node config dialog"] -->|"Writes node.data"| EP["Editor state"]
+    EP -->|"Save"| UPD["trpc.workflows.update"]
+    UPD --> TX["Prisma transaction"]
+    TX --> UPS["Upsert nodes"]
+    TX --> DEL["Delete removed nodes"]
+    TX --> REC["Replace connections"]
+    TX --> SYNC["syncCronSchedules()"]
+    SYNC --> BQ["BullMQ cron schedulers"]
+  end
+
+  subgraph NODE["Per node type: 5 touchpoints"]
+    N1["1. NodeType enum<br/>Prisma schema + migration"]
+    N2["2. Realtime channel<br/>src/inngest/channels"]
+    N3["3. Executor<br/>+ executor-registry"]
+    N4["4. React Flow node<br/>+ node-components"]
+    N5["5. Config dialog<br/>+ node-selector"]
+  end
+
+  N1 --> N2 --> N3 --> N4 --> N5
+  N5 -.-> SD
