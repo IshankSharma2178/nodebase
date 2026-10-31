@@ -33,6 +33,7 @@ type EntityHeaderProps = {
   newButtonLabel?: string;
   disabled?: boolean;
   isCreating?: boolean;
+  dataTour?: string;
 } & (
   | { onNew: () => void; newButtonHref?: never }
   | { newButtonHref: string; onNew?: never }
@@ -47,6 +48,7 @@ export const EntityHeader = ({
   newButtonLabel,
   disabled,
   isCreating,
+  dataTour,
 }: EntityHeaderProps) => {
   return (
     <div className="flex flex-row items-center justify-between gap-x-4">

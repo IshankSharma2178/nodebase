@@ -1,0 +1,31 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#fff1f2','primaryBorderColor':'#e11d48','primaryTextColor':'#4c0519','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+flowchart LR
+  subgraph TRIGGERS["Trigger sources"]
+    M["Manual button<br/>workflows.execute"]
+    C["Cron trigger node<br/>schedules[]"]
+    G["Google Form webhook<br/>?workflowId="]
+    S["Stripe webhook<br/>?workflowId="]
+    TG["Telegram webhook<br/>/api/telegram/webhook/:workflowId"]
+  end
+
+  subgraph GUARD["Ingress guards"]
+    AUTH["Better Auth session<br/>+ ownership check"]
+    RL["Upstash sliding-window<br/>rate limit"]
+    ID["Upstash idempotency key<br/>(24h TTL)"]
+    SEC["Telegram secret token<br/>timingSafeEqual"]
+  end
+
+  subgraph QUEUE["Scheduling"]
+    BQ["BullMQ cron queue<br/>upsertJobScheduler"]
+    CW["cron worker"]
+  end
+
+  EV["Inngest event<br/>workflows/execute.workflow"]
+  FN["executeWorkflow"]
+
+  M --> AUTH --> EV
+  C --> BQ --> CW --> EV
+  G --> RL --> ID --> EV
+  S --> RL --> ID --> EV
+  TG --> SEC --> RL --> ID --> EV
+  EV --> FN

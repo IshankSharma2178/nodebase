@@ -1,0 +1,47 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#f0fdf4','primaryBorderColor':'#16a34a','primaryTextColor':'#052e16','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+flowchart TB
+  subgraph L1["1. Presentation - src/app + src/components"]
+    P1["Server pages<br/>requireAuth → prefetch → HydrateClient"]
+    P2["Client components<br/>useSuspenseQuery + nuqs + Jotai"]
+    P3["React Flow editor<br/>nodeComponents registry"]
+  end
+
+  subgraph L2["2. API boundary - src/trpc"]
+    A1["/api/trpc fetch adapter"]
+    A2["createTRPCContext"]
+    A3["base → protected → premium procedures"]
+    A4["Routers: workflows, credentials, executions"]
+  end
+
+  subgraph L3["3. Feature modules - src/features"]
+    F1["auth"]
+    F2["workflows"]
+    F3["credentials"]
+    F4["editor"]
+    F5["executions"]
+    F6["trigger"]
+    F7["subscriptions"]
+  end
+
+  subgraph L4["4. Domain services - src/lib + src/inngest + src/queue"]
+    D1["Prisma client"]
+    D2["Better Auth + Polar"]
+    D3["Encryption (Cryptr)"]
+    D4["Inngest functions + channels"]
+    D5["BullMQ queues + workers"]
+    D6["Rate limit + idempotency"]
+  end
+
+  subgraph L5["5. Data & external"]
+    X1[("PostgreSQL")]
+    X2[("Redis")]
+    X3["AI / messaging / Google APIs"]
+  end
+
+  L1 --> L2 --> L3 --> L4 --> L5
+  P3 -.->|"node types"| F6
+  A4 -.-> F2
+  A4 -.-> F3
+  A4 -.-> F5
+  F5 --> D4
+  F6 --> D5

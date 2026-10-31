@@ -1,0 +1,35 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'13px','primaryColor':'#eff6ff','primaryBorderColor':'#2563eb','primaryTextColor':'#172554','lineColor':'#64748b','secondaryColor':'#f8fafc','tertiaryColor':'#ffffff'}}}%%
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant E as Editor (client)
+  participant T as tRPC workflows.execute
+  participant I as Inngest
+  participant F as executeWorkflow
+  participant DB as PostgreSQL
+  participant R as Executor registry
+  participant X as External API
+  participant RT as Inngest Realtime
+
+  U->>E: Click "Execute workflow"
+  E->>T: mutate({ id })
+  T->>DB: Verify workflow ownership
+  T->>I: send workflows/execute.workflow
+  I->>F: Run function (retries 0 dev / 3 prod)
+  F->>DB: create Execution (RUNNING)
+  F->>DB: Load workflow nodes + connections
+  F->>F: topologicalSort(nodes, connections)
+  loop Each node in order
+    F->>R: getExecutor(node.type)
+    R->>RT: publish status "loading"
+    R->>X: Call AI / Telegram / Sheets / HTTP
+    X-->>R: Result
+    R->>RT: publish status "success" or "error"
+    R-->>F: Merge result into WorkflowContext
+  end
+  F->>DB: update Execution (SUCCESS, output, completedAt)
+  alt Any unhandled error
+    F->>DB: onFailure → Execution (FAILED, errorStack)
+  end
+  U->>RT: Subscribe with realtime token
+  RT-->>U: node status updates

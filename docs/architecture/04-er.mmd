@@ -1,0 +1,82 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'12px','primaryColor':'#fef3c7','primaryBorderColor':'#d97706','primaryTextColor':'#451a03','lineColor':'#64748b'}}}%%
+erDiagram
+  USER ||--o{ SESSION : "has"
+  USER ||--o{ ACCOUNT : "has"
+  USER ||--o{ WORKFLOW : "owns"
+  USER ||--o{ CREDENTIAL : "owns"
+
+  WORKFLOW ||--o{ NODE : "contains"
+  WORKFLOW ||--o{ CONNECTION : "contains"
+  WORKFLOW ||--o{ EXECUTION : "runs"
+
+  CREDENTIAL ||--o{ NODE : "used by"
+  NODE ||--o{ CONNECTION : "from"
+  NODE ||--o{ CONNECTION : "to"
+
+  USER {
+    string id PK
+    string name
+    string email UK
+    boolean emailVerified
+    string image
+  }
+  SESSION {
+    string id PK
+    string token UK
+    datetime expiresAt
+    string userId FK
+  }
+  ACCOUNT {
+    string id PK
+    string providerId
+    string userId FK
+    string accessToken
+    string refreshToken
+    string password
+  }
+  VERIFICATION {
+    string id PK
+    string identifier
+    string value
+    datetime expiresAt
+  }
+  CREDENTIAL {
+    string id PK
+    enum type
+    string name
+    string value "encrypted"
+    string userId FK
+  }
+  WORKFLOW {
+    string id PK
+    string name
+    string userId FK
+    datetime updatedAt
+  }
+  NODE {
+    string id PK
+    enum type
+    string name
+    json position
+    json data
+    string workflowId FK
+    string credentialId FK
+  }
+  CONNECTION {
+    string id PK
+    string workflowId FK
+    string fromNodeId FK
+    string toNodeId FK
+    string fromOutput
+    string toInput
+  }
+  EXECUTION {
+    string id PK
+    enum status
+    text error
+    string inngestEventId UK
+    json output
+    string workflowId FK
+    datetime startedAt
+    datetime completedAt
+  }

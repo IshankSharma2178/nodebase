@@ -1,10 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -35,8 +36,12 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const DEMO_EMAIL = "demo@nodebase.dev";
+const DEMO_PASSWORD = "demo123456";
+
 export function LoginForm() {
   const router = useRouter();
+  const [demoCopied, setDemoCopied] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -74,6 +79,7 @@ export function LoginForm() {
     await authClient.signIn.social(
       {
         provider: "github",
+        callbackURL: "/workflows",
       },
       {
         onSuccess: () => {
@@ -88,6 +94,7 @@ export function LoginForm() {
     await authClient.signIn.social(
       {
         provider: "google",
+        callbackURL: "/workflows",
       },
       {
         onSuccess: () => {
@@ -99,6 +106,29 @@ export function LoginForm() {
       },
     );
 
+  const fillDemoCredentials = async () => {
+    form.setValue("email", DEMO_EMAIL, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    form.setValue("password", DEMO_PASSWORD, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    try {
+      await navigator.clipboard.writeText(
+        `Email: ${DEMO_EMAIL}\nPassword: ${DEMO_PASSWORD}`,
+      );
+    } catch {
+      // clipboard may be unavailable; the fields are still filled
+    }
+
+    setDemoCopied(true);
+    toast.success("Demo credentials copied and filled in");
+    setTimeout(() => setDemoCopied(false), 2000);
+  };
+
   const isPending = form.formState.isSubmitting;
 
   return (
@@ -108,6 +138,35 @@ export function LoginForm() {
         <CardDescription>Sign in to your account to continue</CardDescription>
       </CardHeader>
       <CardContent className="pt-4">
+        <div className="mb-4 rounded-lg border border-dashed border-border/70 bg-muted/40 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-xs font-medium text-foreground">Demo account</p>
+              <p className="truncate font-mono text-xs text-muted-foreground">
+                {DEMO_EMAIL}
+              </p>
+              <p className="truncate font-mono text-xs text-muted-foreground">
+                {DEMO_PASSWORD}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={fillDemoCredentials}
+              disabled={isPending}
+            >
+              {demoCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {demoCopied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-4">
           <Button
             onClick={signInGithub}
