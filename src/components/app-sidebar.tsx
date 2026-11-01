@@ -14,6 +14,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { START_TOUR_EVENT } from "@/components/onboarding-tour";
 import { useThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -148,7 +149,7 @@ const AppSidebar = () => {
               tooltip="Take a tour"
               className="gap-x-4 h-10 px-4"
               onClick={() =>
-                window.dispatchEvent(new Event("nodebase:start-tour"))
+                window.dispatchEvent(new Event(START_TOUR_EVENT))
               }
             >
               <CompassIcon className="h-4 w-4" />

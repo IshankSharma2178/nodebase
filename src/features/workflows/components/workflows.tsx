@@ -121,6 +121,7 @@ export const WorkflowsHeader = ({ disabled }: { disabled?: boolean }) => {
           newButtonLabel="New workflow"
           disabled={disabled}
           isCreating={createWorkflow.isPending}
+          dataTour="new-workflow"
         />
         <WorkflowsUsage />
       </div>

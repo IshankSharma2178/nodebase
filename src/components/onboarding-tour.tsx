@@ -1,6 +1,6 @@
 "use client";
 
-import { driver, type DriveStep, type Driver } from "driver.js";
+import { type Driver, type DriveStep, driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -88,12 +88,55 @@ const tourSteps: DriveStep[] = [
   },
 ];
 
+const editorTourSteps: DriveStep[] = [
+  {
+    element: '[data-tour="editor-add-node"]',
+    popover: {
+      title: "1. Add nodes",
+      description:
+        "Use Add node to choose a trigger or action and place it on your workflow canvas.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="editor-canvas"]',
+    popover: {
+      title: "2. Build your workflow",
+      description:
+        "Connect your nodes on the canvas, then configure each step to define what your workflow should do.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="editor-save"]',
+    popover: {
+      title: "3. Save your workflow",
+      description:
+        "Save after making changes. You must save the workflow before you can execute it.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="editor-execute"]',
+    popover: {
+      title: "4. Execute your workflow",
+      description:
+        "Once your changes are saved and you have a Manual Trigger, use Execute workflow to test it.",
+      side: "top",
+      align: "center",
+    },
+  },
+];
+
 export function OnboardingTour() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const pathname = usePathname();
   const driverRef = useRef<Driver | null>(null);
-  const autoStartedRef = useRef(false);
+  const startedRef = useRef(false);
   const replayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userId = session?.user?.id;
@@ -107,6 +150,12 @@ export function OnboardingTour() {
     if (driverRef.current || typeof document === "undefined") {
       return;
     }
+
+    const steps = pathname.startsWith("/workflows/")
+      ? editorTourSteps
+      : tourSteps;
+
+    startedRef.current = true;
 
     const driverObj = driver({
       showProgress: true,
@@ -122,7 +171,18 @@ export function OnboardingTour() {
       waitForElement: 1500,
       skipMissingElement: true,
       popoverClass: "nodebase-tour",
-      steps: tourSteps,
+      steps,
+      onPopoverRender: (popover) => {
+        const skipButton = document.createElement("button");
+        skipButton.type = "button";
+        skipButton.textContent = "Skip tour";
+        skipButton.className = "driver-popover-footer-btn";
+        skipButton.style.marginRight = "auto";
+        skipButton.addEventListener("click", () => {
+          driverRef.current?.destroy();
+        });
+        popover.footerButtons.prepend(skipButton);
+      },
       onDestroyed: () => {
         driverRef.current = null;
       },
@@ -139,13 +199,12 @@ export function OnboardingTour() {
     }
 
     driverObj.drive();
-  }, [storageKey]);
+  }, [pathname, storageKey]);
 
   useEffect(() => {
-    if (isPending || !userId || autoStartedRef.current) {
+    if (isPending || !userId || startedRef.current) {
       return;
     }
-    autoStartedRef.current = true;
 
     if (storageKey) {
       try {
@@ -180,7 +239,7 @@ export function OnboardingTour() {
         replayTimerRef.current = null;
       }
 
-      if (pathname !== "/workflows") {
+      if (pathname !== "/workflows" && !pathname.startsWith("/workflows/")) {
         router.push("/workflows");
         replayTimerRef.current = setTimeout(startTour, 1400);
       } else {

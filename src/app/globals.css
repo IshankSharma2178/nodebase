@@ -231,8 +231,84 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+}
+
+.nodebase-tour.driver-popover {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.nodebase-tour .driver-popover-title,
+.nodebase-tour .driver-popover-description {
+  color: var(--popover-foreground);
+}
+
+.nodebase-tour .driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+
+.nodebase-tour .driver-popover-footer-btn {
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+  border-color: var(--border);
+}
+
+.nodebase-tour .driver-popover-footer-btn:hover,
+.nodebase-tour .driver-popover-footer-btn:focus {
+  color: var(--popover-foreground);
+  background-color: var(--accent);
+}
+
+.nodebase-tour .driver-popover-navigation-btns button {
+  color: var(--primary-foreground);
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.nodebase-tour .driver-popover-navigation-btns button:hover {
+  background-color: color-mix(in oklab, var(--primary) 88%, black);
+}
+
+.nodebase-tour .driver-popover-close-btn {
+  color: var(--popover-foreground);
+}
+
+.nodebase-tour .driver-popover-close-btn:hover,
+.nodebase-tour .driver-popover-close-btn:focus-visible {
+  color: var(--popover-foreground);
+}
+
+.nodebase-tour .driver-popover-arrow {
+  border-color: var(--popover);
+}
+
+.nodebase-tour .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+
+.nodebase-tour .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.nodebase-tour .driver-popover-arrow-side-top {
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.nodebase-tour .driver-popover-arrow-side-bottom {
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-top-color: transparent;
 }

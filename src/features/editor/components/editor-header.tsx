@@ -78,6 +78,7 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
       </div>
       <Button
         size="sm"
+        data-tour="editor-save"
         onClick={handleSave}
         disabled={!isDirty || saveWorkflow.isPending}
       >

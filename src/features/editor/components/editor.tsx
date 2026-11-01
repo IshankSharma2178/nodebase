@@ -78,7 +78,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   }, [nodes]);
 
   return (
-    <div className="size-full">
+    <div className="size-full" data-tour="editor-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -98,7 +98,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         <Controls />
         <MiniMap />
         <Panel position="top-right">
-          <AddNodeButton />
+          <div data-tour="editor-add-node">
+            <AddNodeButton />
+          </div>
         </Panel>
         {hasManualTrigger && (
           <Panel position="bottom-center">
